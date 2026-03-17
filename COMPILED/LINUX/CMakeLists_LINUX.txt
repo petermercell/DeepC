@@ -1,0 +1,224 @@
+cmake_minimum_required(VERSION 3.11)
+
+project(DeepC)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ============================================================================
+# RPATH Configuration - Make plugins portable
+# ============================================================================
+set(CMAKE_SKIP_BUILD_RPATH TRUE)
+set(CMAKE_SKIP_INSTALL_RPATH TRUE)
+
+# ============================================================================
+# Nuke SDK
+# ============================================================================
+if(NOT DEFINED NUKE_VERSION)
+    set(NUKE_VERSION "14.1v8")
+endif()
+set(NDKDIR /opt/Nuke${NUKE_VERSION})
+
+message(STATUS "Nuke Version: ${NUKE_VERSION}")
+message(STATUS "Nuke Directory: ${NDKDIR}")
+
+if(NOT EXISTS ${NDKDIR})
+    message(FATAL_ERROR "Nuke directory not found: ${NDKDIR}")
+endif()
+if(NOT EXISTS ${NDKDIR}/libDDImage.so)
+    message(FATAL_ERROR "libDDImage.so not found in: ${NDKDIR}")
+endif()
+
+set(DDIMAGE_LIBRARY ${NDKDIR}/libDDImage.so)
+
+# ============================================================================
+# Global compile options
+# ============================================================================
+# Required for Nuke 14.1 ABI compatibility
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+add_compile_options(-fPIC)
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
+
+# ============================================================================
+# Optional dependencies
+# ============================================================================
+find_package(OpenGL QUIET)
+if(OpenGL_FOUND)
+    message(STATUS "OpenGL found - DeepCPMatte will be built")
+else()
+    message(STATUS "OpenGL not found - DeepCPMatte will be skipped")
+endif()
+
+# Check for RIPFramework (Blink)
+find_library(RIPFRAMEWORK_LIBRARY
+    NAMES RIPFramework libRIPFramework
+    PATHS ${NDKDIR}
+    NO_DEFAULT_PATH
+)
+if(RIPFRAMEWORK_LIBRARY)
+    message(STATUS "RIPFramework found - DeepCBlink will be built")
+else()
+    message(STATUS "RIPFramework not found - DeepCBlink will be skipped")
+endif()
+
+# ============================================================================
+# Helper function
+# ============================================================================
+function(add_nuke_plugin PLUGIN_NAME)
+    add_library(${PLUGIN_NAME} MODULE ${ARGN})
+    target_include_directories(${PLUGIN_NAME} PRIVATE ${NDKDIR}/include)
+    target_link_libraries(${PLUGIN_NAME} PRIVATE ${DDIMAGE_LIBRARY})
+    set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
+endfunction()
+
+# ============================================================================
+# FastNoise (object library)
+# ============================================================================
+add_library(FastNoise OBJECT FastNoise/FastNoise.cpp)
+target_include_directories(FastNoise PRIVATE FastNoise)
+
+# ============================================================================
+# Wrapper object libraries (src/)
+# ============================================================================
+add_library(DeepCWrapper OBJECT src/DeepCWrapper.cpp)
+target_include_directories(DeepCWrapper PRIVATE ${NDKDIR}/include)
+
+add_library(DeepCMWrapper OBJECT src/DeepCMWrapper.cpp)
+target_include_directories(DeepCMWrapper PRIVATE ${NDKDIR}/include)
+target_sources(DeepCMWrapper PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+
+# ============================================================================
+# src/ plugins - no wrapper needed
+# ============================================================================
+set(PLUGINS
+    DeepCAddChannels
+    DeepCAdjustBBox
+    DeepCConstant
+    DeepCCopyBBox
+    DeepCRemoveChannels
+    DeepCShuffle
+    DeepCWorld
+)
+
+foreach(PLUGIN_NAME ${PLUGINS})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+endforeach()
+
+# ============================================================================
+# src/ plugins - need DeepCWrapper
+# ============================================================================
+set(PLUGINS_WRAPPED
+    DeepCAdd
+    DeepCClamp
+    DeepCColorLookup
+    DeepCGamma
+    DeepCGrade
+    DeepCHueShift
+    DeepCInvert
+    DeepCMatrix
+    DeepCMultiply
+    DeepCPosterize
+    DeepCSaturation
+)
+
+foreach(PLUGIN_NAME ${PLUGINS_WRAPPED})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+endforeach()
+
+# ============================================================================
+# src/ plugins - need DeepCWrapper + DeepCMWrapper
+# ============================================================================
+set(PLUGINS_MWRAPPED
+    DeepCID
+    DeepCPNoise
+)
+
+foreach(PLUGIN_NAME ${PLUGINS_MWRAPPED})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCMWrapper>)
+endforeach()
+
+# FastNoise into DeepCPNoise
+target_include_directories(DeepCPNoise PRIVATE FastNoise)
+target_sources(DeepCPNoise PRIVATE $<TARGET_OBJECTS:FastNoise>)
+
+# ============================================================================
+# DeepCBlink (needs RIPFramework)
+# ============================================================================
+if(RIPFRAMEWORK_LIBRARY)
+    add_nuke_plugin(DeepCBlink src/DeepCBlink.cpp)
+    target_link_libraries(DeepCBlink PRIVATE ${RIPFRAMEWORK_LIBRARY})
+    list(APPEND PLUGINS DeepCBlink)
+endif()
+
+# ============================================================================
+# DeepCPMatte (needs OpenGL + wrappers)
+# ============================================================================
+if(OpenGL_FOUND)
+    add_nuke_plugin(DeepCPMatte src/DeepCPMatte.cpp)
+    target_sources(DeepCPMatte PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+    target_sources(DeepCPMatte PRIVATE $<TARGET_OBJECTS:DeepCMWrapper>)
+    target_link_libraries(DeepCPMatte PRIVATE OpenGL::GL)
+    list(APPEND PLUGINS_MWRAPPED DeepCPMatte)
+endif()
+
+# ============================================================================
+# DeepCBlur
+# ============================================================================
+add_nuke_plugin(DeepCBlur
+    DeepCBlur/src/DeepCBlur.cpp
+    DeepCBlur/src/BlurKernels.cpp
+    DeepCBlur/src/DeepCBlurSpec.cpp
+    shared/src/DeepCOpTree.cpp
+    shared/src/DeepCSpec.cpp
+)
+target_include_directories(DeepCBlur PRIVATE
+    DeepCBlur/include
+    shared/include
+)
+
+# ============================================================================
+# DeepCDefocus
+# ============================================================================
+add_nuke_plugin(DeepCDefocus
+    DeepCDefocus/src/DeepCDefocus.cpp
+    DeepCDefocus/src/DefocusKernels.cpp
+    DeepCDefocus/src/DeepCDefocusSpec.cpp
+    DeepCDefocus/src/CircleMetadataKernel.cpp
+    shared/src/DeepCSpec.cpp
+)
+target_include_directories(DeepCDefocus PRIVATE
+    DeepCDefocus/include
+    shared/include
+)
+
+# ============================================================================
+# Install all plugins
+# ============================================================================
+install(TARGETS
+    ${PLUGINS}
+    ${PLUGINS_WRAPPED}
+    ${PLUGINS_MWRAPPED}
+    DeepCBlur
+    DeepCDefocus
+    DESTINATION .
+)
+
+# ============================================================================
+# Build summary
+# ============================================================================
+message(STATUS "========================================")
+message(STATUS "DeepC Build Configuration:")
+message(STATUS "  Nuke Version: ${NUKE_VERSION}")
+message(STATUS "  Nuke Directory: ${NDKDIR}")
+message(STATUS "  Standard plugins: ${PLUGINS}")
+message(STATUS "  Wrapped plugins: ${PLUGINS_WRAPPED}")
+message(STATUS "  MWrapped plugins: ${PLUGINS_MWRAPPED}")
+message(STATUS "  DeepCBlur: YES")
+message(STATUS "  DeepCDefocus: YES")
+message(STATUS "  DeepCBlink: ${RIPFRAMEWORK_LIBRARY}")
+message(STATUS "  DeepCPMatte: ${OpenGL_FOUND}")
+message(STATUS "  Install Prefix: ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "========================================")
