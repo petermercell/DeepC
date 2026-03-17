@@ -1,0 +1,761 @@
+#! /opt/Nuke17.0v1/libnuke-17.0.1.so -nx
+version 17.0 v1
+define_window_layout_xml {<?xml version="1.0" encoding="UTF-8"?>
+<layout version="1.0">
+    <window x="0" y="32" w="2560" h="1387" maximized="1" screen="0">
+        <splitter orientation="1">
+            <split size="40"/>
+            <dock id="" hideTitles="1" activePageId="Toolbar.1">
+                <page id="Toolbar.1"/>
+            </dock>
+            <split size="1897" stretch="1"/>
+            <splitter orientation="2">
+                <split size="790"/>
+                <dock id="" activePageId="Viewer.1">
+                    <page id="Viewer.1"/>
+                </dock>
+                <split size="555"/>
+                <dock id="" activePageId="DAG.1" focus="true">
+                    <page id="DAG.1"/>
+                    <page id="Curve Editor.1"/>
+                    <page id="DopeSheet.1"/>
+                </dock>
+            </splitter>
+            <split size="615"/>
+            <dock id="" activePageId="Properties.1">
+                <page id="Properties.1"/>
+                <page id="uk.co.thefoundry.backgroundrenderview.1"/>
+                <page id="Scenegraph.1"/>
+            </dock>
+        </splitter>
+    </window>
+</layout>
+}
+Root {
+ inputs 0
+ name /home/pm/Documents/MLrunner/DeepCToolset.nk
+ frame 81
+ format "2048 1556 0 0 2048 1556 1 2K_Super_35(full-ap)"
+ proxy_type scale
+ proxy_format "1024 778 0 0 1024 778 1 1K_Super_35(full-ap)"
+ colorManagement Nuke
+ workingSpaceLUT linear
+ monitorLut sRGB
+ monitorOutLUT rec709
+ int8Lut sRGB
+ int16Lut sRGB
+ logLut Cineon
+ floatLut linear
+}
+StickyNote {
+ inputs 0
+ name StickyNote2
+ label CHANNEL
+ note_font_size 100
+ xpos -1344
+ ypos -1282
+}
+DeepCDefocus {
+ inputs 0
+ name DeepCDefocus1
+ xpos 2755
+ ypos -922
+}
+DeepCBlur {
+ inputs 0
+ quality "low quality"
+ "far falloff rate" 1
+ name DeepCBlur1
+ xpos 2644
+ ypos -923
+}
+StickyNote {
+ inputs 0
+ name StickyNote7
+ label UTILS
+ note_font_size 100
+ xpos -439
+ ypos -1285
+}
+DeepCWorld {
+ inputs 0
+ name DeepCWorld1
+ xpos -3565
+ ypos -718
+}
+StickyNote {
+ inputs 0
+ name StickyNote20
+ label 1-100
+ note_font_size 30
+ xpos -3072
+ ypos -1698
+}
+StickyNote {
+ inputs 0
+ name StickyNote21
+ label "Deep to Position Pass"
+ note_font_size 30
+ xpos -3207
+ ypos -958
+}
+StickyNote {
+ inputs 0
+ name StickyNote25
+ label "Position Pass to Deep"
+ note_font_size 30
+ xpos -2537
+ ypos -953
+}
+StickyNote {
+ inputs 0
+ name StickyNote26
+ label "TOTO JE UZ NAVIAC"
+ note_font_size 30
+ xpos -2531
+ ypos -526
+}
+DeepCConstant {
+ inputs 0
+ name DeepCConstant1
+ xpos -1827
+ ypos -1178
+}
+DeepCID {
+ operation union
+ id_pick {1232 812}
+ id 0.39
+ tolerance 0.245
+ name DeepCID1
+ xpos -1827
+ ypos -1115
+}
+StickyNote {
+ inputs 0
+ name StickyNote1
+ label DRAW
+ note_font_size 100
+ xpos -1938
+ ypos -1321
+}
+Camera2 {
+ inputs 0
+ translate {{curve x1 -3.61574173 x100 4.021763802} {curve x1 1.328431845 x100 0.9841157794} {curve x1 4.694727898 x100 4.483808994}}
+ rotate {{curve x1 -6.277982463 x100 -3.207973581} {curve x1 -22.60000996 x100 36.77119766} {curve x1 0 x100 -5.399300824}}
+ focal 16
+ vaperture 13.824
+ name Camera3
+ xpos -3282
+ ypos -1267
+}
+CheckerBoard2 {
+ inputs 0
+ centerlinewidth 0
+ name CheckerBoard1
+ xpos -3068
+ ypos -1609
+}
+set N2046f0f0 [stack 0]
+Cube {
+ uniform_scale 10
+ name Cube1
+ xpos -2921
+ ypos -1500
+}
+push $N2046f0f0
+Sphere {
+ rows 100
+ columns 100
+ translate {0 0 -3.579999924}
+ uniform_scale 2
+ name Sphere1
+ xpos -3068
+ ypos -1494
+}
+Scene {
+ inputs 2
+ name Scene1
+ xpos -3058
+ ypos -1413
+}
+push 0
+add_layer {P P.x P.y P.z P.red P.green P.blue P.alpha P.R P.G P.B N.red N.green N.blue pw.g pw.b P.X P.Y P.Z pw.alpha pw.r N.blue P.other}
+add_layer {N N.x N.y N.z N.red N.green N.blue N.alpha N.X N.Y N.Z}
+ScanlineRender {
+ inputs 3
+ conservative_shader_sampling false
+ output_shader_vectors true
+ P_channel {P.x P.y P.z}
+ N_channel {N.x N.y N.z}
+ name ScanlineRender2
+ xpos -3068
+ ypos -1247
+}
+set N204bd5e0 [stack 0]
+Dot {
+ name Dot10
+ xpos -3034
+ ypos -1025
+}
+Dot {
+ name Dot11
+ xpos -2375
+ ypos -1025
+}
+set N204e67c0 [stack 0]
+Dot {
+ name Dot1
+ xpos -1903
+ ypos -1025
+}
+set N204ed2a0 [stack 0]
+DeepCPMatte {
+ position_data P
+ output rgba
+ operation mask
+ center {1152 720}
+ translate {0.2859528959 0.2125339061 -1.613058448}
+ uniform_scale 3.7
+ name DeepCPMatte1
+ xpos -1937
+ ypos -952
+}
+Dot {
+ name Dot4
+ xpos -1903
+ ypos -829
+}
+StickyNote {
+ inputs 0
+ name StickyNote5
+ label 3D
+ note_font_size 100
+ xpos -3599
+ ypos -951
+}
+Camera2 {
+ inputs 0
+ translate {{curve x1 -3.61574173 x100 4.021763802} {curve x1 1.328431845 x100 0.9841157794} {curve x1 4.694727898 x100 4.483808994}}
+ rotate {{curve x1 -6.277982463 x100 -3.207973581} {curve x1 -22.60000996 x100 36.77119766} {curve x1 0 x100 -5.399300824}}
+ focal 16
+ vaperture 13.824
+ name Camera4
+ xpos -2556
+ ypos -737
+}
+set N20519510 [stack 0]
+push $N20519510
+push $N204e67c0
+Remove {
+ operation keep
+ channels rgba
+ channels2 {P.x P.y P.z -P.red}
+ name Remove9
+ xpos -2409
+ ypos -865
+}
+Group {
+ inputs 2
+ name DeepFromPosition3
+ tile_color 0x145bff
+ label "<font color=cyan>Deep Output</font>"
+ xpos -2409
+ ypos -727
+ addUserKnob {20 tab_general l General}
+ addUserKnob {41 position l "position channel" T Shuffle_pos.in}
+ addUserKnob {4 space -STARTLINE M {world camera ""}}
+ addUserKnob {20 t_VERSION l Version}
+ addUserKnob {26 l_VERSION l Version T 1.0}
+ addUserKnob {26 l_DATE l "Date Modified" T 2019-12-21}
+ addUserKnob {22 btn_CHANGELOG l Changelog T "log = \"1.0<br>-&nbsp;convert&nbsp;position&nbsp;to&nbsp;deep\"\nnuke.message( log )" +STARTLINE}
+ addUserKnob {26 l_DEV l "Developed by" T "<a href='https://facebook.com/MJTLab'><font color='orange'>Mark Joey Tang</font></a>"}
+}
+ Input {
+  inputs 0
+  name cam
+  xpos 377
+  ypos 172
+  number 1
+ }
+ Input {
+  inputs 0
+  name img
+  xpos 0
+  ypos 169
+ }
+ Dot {
+  name Dot2
+  xpos 34
+  ypos 251
+ }
+set N20564460 [stack 0]
+ Dot {
+  name Dot4
+  xpos 134
+  ypos 251
+ }
+set N2056af10 [stack 0]
+ Dot {
+  name Dot3
+  xpos 134
+  ypos 661
+ }
+push $N2056af10
+ Dot {
+  name Dot1
+  xpos 235
+  ypos 251
+ }
+ Unpremult {
+  channels all
+  name Unpremult1
+  xpos 201
+  ypos 341
+ }
+ Shuffle {
+  in P
+  in2 alpha
+  alpha red2
+  name Shuffle_pos
+  xpos 201
+  ypos 420
+ }
+ Add {
+  channels {rgba.red rgba.green rgba.blue none}
+  value {{"\[exists parent.input1] == 0 ? 0 : -parent.input1.world_matrix.3"} {"\[exists parent.input1] == 0 ? 0 : -parent.input1.world_matrix.7"} {"\[exists parent.input1] == 0 ? 0 : -parent.input1.world_matrix.11"} 0}
+  name Add1
+  xpos 201
+  ypos 504
+ }
+ ColorMatrix {
+  matrix {
+   
+       {{"\[exists parent.input1] == 0 ? 1 : parent.input1.world_matrix.0"} {"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.1"} {"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.2"}}
+       {{"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.4"} {"\[exists parent.input1] == 0 ? 1 : parent.input1.world_matrix.5"} {"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.6"}}
+       {{"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.8"} {"\[exists parent.input1] == 0 ? 0 : parent.input1.world_matrix.9"} {"\[exists parent.input1] == 0 ? 1 : parent.input1.world_matrix.10"}}
+  }
+  invert true
+  name ColorMatrix1
+  xpos 201
+  ypos 583
+ }
+ Expression {
+  expr2 "alpha <= 0 ? 0 : 1 / -blue"
+  name Expression1
+  xpos 201
+  ypos 665
+ }
+ Switch {
+  inputs 2
+  which {{space}}
+  name Switch1
+  xpos 201
+  ypos 749
+ }
+push $N20564460
+ ShuffleCopy {
+  inputs 2
+  red blue
+  out depth
+  name ShuffleCopy1
+  xpos 0
+  ypos 749
+ }
+ DeepFromImage {
+  name DeepFromImage1
+  xpos 0
+  ypos 830
+ }
+ Output {
+  name Output1
+  xpos 0
+  ypos 913
+ }
+ Viewer {
+  frame_range 1-100
+  channels P
+  translate {2.04399991 0.03200000152}
+  monitorOutNDISenderName "NukeX - 001_test_Pipeline - Viewer1"
+  name Viewer1
+  xpos 824
+  ypos 544
+ }
+end_group
+DeepCRemoveChannels {
+ channels P
+ name DeepCRemoveChannels7
+ xpos -2409
+ ypos -656
+}
+Dot {
+ name Dot13
+ xpos -2375
+ ypos -587
+}
+DeepCWorld {
+ inputs 2
+ output_channelset {P.x P.y P.z P.red}
+ name DeepCWorld7
+ xpos -2409
+ ypos -431
+}
+DeepToImage2 {
+ name DeepToImage6
+ xpos -2410
+ ypos -347
+}
+Dot {
+ name Dot14
+ xpos -2375
+ ypos -272
+}
+push $N204ed2a0
+Dot {
+ name Dot2
+ xpos -1660
+ ypos -1025
+}
+set N206e29e0 [stack 0]
+Dot {
+ name Dot7
+ xpos -1317
+ ypos -1025
+}
+set N206e9460 [stack 0]
+Dot {
+ name Dot12
+ xpos -1073
+ ypos -1025
+}
+set N206f0200 [stack 0]
+Dot {
+ name Dot6
+ xpos -307
+ ypos -1025
+}
+set N206f6d90 [stack 0]
+Dot {
+ name Dot15
+ xpos 704
+ ypos -1025
+}
+set N206fd920 [stack 0]
+DeepCPMatte {
+ position_data {P.x P.y P.z P.red}
+ output rgba
+ center {1152 720}
+ translate {0.2859528959 0.2125339061 -1.613058448}
+ uniform_scale 3.6
+ name DeepCPMatte2
+ xpos 829
+ ypos -990
+}
+Dot {
+ name Dot16
+ xpos 863
+ ypos -947
+}
+DeepToImage2 {
+ name DeepToImage1
+ xpos 829
+ ypos -908
+}
+Shuffle2 {
+ fromInput1 {
+  {0}
+  B
+ }
+ fromInput2 {
+  {0}
+  B
+ }
+ mappings "4 rgba.green 0 1 rgba.green 0 1 rgba.blue 0 2 rgba.blue 0 2 rgba.red 0 0 rgba.red 0 0 rgba.red 0 0 rgba.alpha 0 3"
+ name Shuffle1
+ xpos 829
+ ypos -856
+}
+push $N206fd920
+DeepCGrade {
+ white {1.699999928 1 0.2999999523}
+ name DeepCGrade1
+ xpos 432
+ ypos -856
+}
+push $N206fd920
+msDeepKeymix {
+ inputs 3
+ name msDeepKeymix1
+ xpos 664
+ ypos -856
+}
+Dot {
+ name Dot17
+ xpos 698
+ ypos -740
+}
+StickyNote {
+ inputs 0
+ name StickyNote6
+ label "MERGE sekcia nefunguje v DeepC"
+ note_font_size 50
+ xpos 181
+ ypos -1219
+}
+StickyNote {
+ inputs 0
+ name StickyNote3
+ label COLOR
+ note_font_size 100
+ xpos 1407
+ ypos -1230
+}
+push $N206e29e0
+DeepCPNoise {
+ position_data P
+ uniform_scale 0.38
+ name DeepCPNoise1
+ xpos -1694
+ ypos -954
+}
+Dot {
+ name Dot5
+ xpos -1660
+ ypos -842
+}
+StickyNote {
+ inputs 0
+ name StickyNote4
+ label FILTER
+ note_font_size 100
+ xpos 2581
+ ypos -1137
+}
+push $N206fd920
+Dot {
+ name Dot18
+ xpos 1528
+ ypos -1025
+}
+Dot {
+ name Dot19
+ xpos 1528
+ ypos -930
+}
+set N207a3ba0 [stack 0]
+Dot {
+ name Dot20
+ xpos 1528
+ ypos -849
+}
+set N207bb330 [stack 0]
+Dot {
+ name Dot21
+ xpos 1528
+ ypos -742
+}
+set N2080f010 [stack 0]
+DeepCGamma {
+ value 0.79
+ name DeepCGamma1
+ xpos 1676
+ ypos -746
+}
+push $N2080f010
+Dot {
+ name Dot22
+ xpos 1528
+ ypos -656
+}
+set N20823bf0 [stack 0]
+DeepCInvert {
+ name DeepCInvert1
+ xpos 1674
+ ypos -660
+}
+push $N20823bf0
+Dot {
+ name Dot23
+ xpos 1528
+ ypos -571
+}
+set N20838430 [stack 0]
+Dot {
+ name Dot24
+ xpos 1528
+ ypos -500
+}
+DeepCAdd {
+ value 0.47
+ name DeepCAdd1
+ xpos 1494
+ ypos -93
+}
+DeepCClamp {
+ minimum 0.5
+ maximum 0.66
+ name DeepCClamp1
+ xpos 1494
+ ypos -40
+}
+Camera2 {
+ inputs 0
+ translate {{curve x1 -3.61574173 x100 4.021763802} {curve x1 1.328431845 x100 0.9841157794} {curve x1 4.694727898 x100 4.483808994}}
+ rotate {{curve x1 -6.277982463 x100 -3.207973581} {curve x1 -22.60000996 x100 36.77119766} {curve x1 0 x100 -5.399300824}}
+ focal 16
+ vaperture 13.824
+ name Camera2
+ xpos -3213
+ ypos -616
+}
+push $N204bd5e0
+Dot {
+ name Dot3
+ xpos -3254
+ ypos -1138
+}
+Dot {
+ name Dot8
+ xpos -3254
+ ypos -707
+}
+DeepCRemoveChannels {
+ channels P
+ name DeepCRemoveChannels6
+ xpos -3087
+ ypos -716
+}
+DeepCWorld {
+ inputs 2
+ output_channelset P
+ name DeepCWorld6
+ xpos -3087
+ ypos -595
+}
+DeepToImage2 {
+ name DeepToImage5
+ xpos -3087
+ ypos -489
+}
+Dot {
+ name Dot9
+ xpos -3053
+ ypos -365
+}
+Shuffle2 {
+ fromInput1 {
+  {0}
+  B
+ }
+ in1 P
+ fromInput2 {
+  {0}
+  B
+ }
+ mappings "4 P.x 0 0 rgba.red 0 0 P.y 0 1 rgba.green 0 1 P.z 0 2 rgba.blue 0 2 P.red 0 3 rgba.alpha 0 3"
+ name Shuffle2
+ xpos -3087
+ ypos -308
+}
+push $N206e9460
+add_layer {layer1 layer1.red layer1.green layer1.blue layer1.alpha}
+DeepCAddChannels {
+ channels layer1
+ name DeepCAddChannels1
+ xpos -1351
+ ypos -941
+}
+push $N206f0200
+DeepCRemoveChannels {
+ channels {rgba.red -rgba.green -rgba.blue none}
+ name DeepCRemoveChannels1
+ xpos -1107
+ ypos -939
+}
+DeepCShuffle {
+ out0 rgba.green
+ out1 rgba.red
+ in2 -rgba.blue
+ out2 -rgba.blue
+ in3 -rgba.alpha
+ out3 -rgba.alpha
+ name DeepCShuffle1
+ xpos -787
+ ypos -939
+}
+push $N206f6d90
+DeepCAdjustBBox {
+ numpixels {1.652304762e-315 200}
+ name DeepCAdjustBBox1
+ xpos -341
+ ypos -915
+}
+push $N206f6d90
+DeepCCopyBBox {
+ inputs 2
+ name DeepCCopyBBox1
+ xpos -141
+ ypos -915
+}
+push $N207a3ba0
+DeepCColorLookup {
+ lut {master {curve C 0 x0.4346651733 0.1524876356 x1 1}
+   red {}
+   green {}
+   blue {}}
+ name DeepCColorLookup1
+ xpos 1663
+ ypos -933
+}
+push $N207bb330
+DeepCGrade {
+ white {1.699999928 1 0.2999999523}
+ name DeepCGrade2
+ xpos 1673
+ ypos -853
+}
+DeepCHueShift {
+ hue 48
+ value 0.66
+ name DeepCHueShift1
+ xpos 1673
+ ypos -822
+}
+DeepCSaturation {
+ saturation 2.82
+ name DeepCSaturation1
+ xpos 1840
+ ypos -822
+}
+DeepCMultiply {
+ value 2
+ name DeepCMultiply1
+ xpos 1840
+ ypos -757
+}
+DeepCPosterize {
+ colors 2
+ name DeepCPosterize1
+ xpos 1840
+ ypos -694
+}
+push $N20838430
+DeepCMatrix {
+ matrix {
+  
+      {1 0 0}
+      {0 1 0}
+      {0 0 1}
+ }
+ name DeepCMatrix1
+ xpos 1684
+ ypos -574
+}
+Viewer {
+ frame 81
+ frame_range 1-100
+ monitorOutNDISenderName "Nuke - DeepCToolset - Viewer1"
+ monitorOutOutputTransform rec709
+ name Viewer1
+ xpos -1446
+ ypos 860
+}
