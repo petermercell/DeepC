@@ -1,0 +1,342 @@
+cmake_minimum_required(VERSION 3.15)
+
+# CRITICAL: Set MSVC runtime library policy BEFORE project()
+cmake_policy(SET CMP0091 NEW)
+
+project(DeepC LANGUAGES CXX)
+
+# ============================================================================
+# Windows-specific Configuration
+# ============================================================================
+if(NOT WIN32)
+    message(FATAL_ERROR "This CMakeLists.txt is for Windows only")
+endif()
+
+# Compiler requirements - Visual Studio 2022
+if(MSVC)
+    if(MSVC_VERSION LESS 1930)
+        message(FATAL_ERROR "Visual Studio 2022 or later required (MSVC 19.30+)")
+    else()
+        message(STATUS "Using MSVC version ${MSVC_VERSION}")
+    endif()
+else()
+    message(FATAL_ERROR "This build requires MSVC (Visual Studio)")
+endif()
+
+# Set default build type if not specified
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# ============================================================================
+# CRITICAL: Force static runtime library globally
+# Eliminates MSVCP140.dll, VCRUNTIME140.dll, and api-ms-win-crt dependencies
+# ============================================================================
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+# Enable C++17 standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ============================================================================
+# Nuke SDK
+# ============================================================================
+if(NOT DEFINED NUKE_VERSION)
+    set(NUKE_VERSION "17.0v1")
+endif()
+
+if(NOT DEFINED NDKDIR)
+    set(NDKDIR "C:/Program Files/Nuke${NUKE_VERSION}")
+endif()
+
+message(STATUS "Nuke Version: ${NUKE_VERSION}")
+message(STATUS "Nuke Directory: ${NDKDIR}")
+
+if(NOT EXISTS "${NDKDIR}")
+    message(FATAL_ERROR "Nuke directory not found: ${NDKDIR}")
+endif()
+if(NOT EXISTS "${NDKDIR}/DDImage.lib")
+    message(FATAL_ERROR "DDImage.lib not found in: ${NDKDIR}")
+endif()
+
+set(DDIMAGE_LIBRARY "${NDKDIR}/DDImage.lib")
+
+# ============================================================================
+# Windows Compiler Flags and Definitions
+# ============================================================================
+add_definitions(
+    -DWIN32
+    -D_WINDOWS
+    -DNDEBUG
+    -DNOMINMAX
+    -D_CRT_SECURE_NO_WARNINGS
+    -D_SCL_SECURE_NO_WARNINGS
+    -D_USE_MATH_DEFINES
+    -DWIN32_LEAN_AND_MEAN
+)
+
+if(MSVC)
+    add_compile_options(
+        /W3
+        /O2
+        /Ob2
+        /EHsc
+        /FS
+        /nologo
+    )
+
+    # Suppress noisy warnings
+    add_compile_options(
+        /wd4514
+        /wd4710
+        /wd4711
+        /wd4668
+    )
+endif()
+
+# No prefix for plugin DLLs
+set(CMAKE_SHARED_LIBRARY_PREFIX "")
+
+# Required for Nuke 14.1 ABI compatibility
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_GLIBCXX_USE_CXX11_ABI=0")
+
+# ============================================================================
+# Optional dependencies
+# ============================================================================
+find_package(OpenGL QUIET)
+if(OpenGL_FOUND)
+    message(STATUS "OpenGL found - DeepCPMatte will be built")
+else()
+    message(STATUS "OpenGL not found - DeepCPMatte will be skipped")
+endif()
+
+# Check for RIPFramework (Blink)
+find_library(RIPFRAMEWORK_LIBRARY
+    NAMES RIPFramework
+    PATHS "${NDKDIR}"
+    NO_DEFAULT_PATH
+)
+if(RIPFRAMEWORK_LIBRARY)
+    message(STATUS "RIPFramework found - DeepCBlink will be built")
+else()
+    message(STATUS "RIPFramework not found - DeepCBlink will be skipped")
+endif()
+
+# ============================================================================
+# Helper function
+# ============================================================================
+function(add_nuke_plugin PLUGIN_NAME)
+    add_library(${PLUGIN_NAME} SHARED ${ARGN})
+
+    # Static runtime for portability
+    set_property(TARGET ${PLUGIN_NAME} PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+    target_include_directories(${PLUGIN_NAME} PRIVATE "${NDKDIR}/include")
+
+    target_compile_definitions(${PLUGIN_NAME} PRIVATE
+        _USE_MATH_DEFINES
+        NOMINMAX
+    )
+
+    target_link_libraries(${PLUGIN_NAME} PRIVATE ${DDIMAGE_LIBRARY})
+
+    set_target_properties(${PLUGIN_NAME} PROPERTIES
+        PREFIX ""
+        SUFFIX ".dll"
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        LIBRARY_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+endfunction()
+
+# ============================================================================
+# FastNoise (object library)
+# ============================================================================
+add_library(FastNoise OBJECT FastNoise/FastNoise.cpp)
+target_include_directories(FastNoise PRIVATE FastNoise)
+set_property(TARGET FastNoise PROPERTY
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+# ============================================================================
+# Wrapper object libraries (src/)
+# ============================================================================
+add_library(DeepCWrapper OBJECT src/DeepCWrapper.cpp)
+target_include_directories(DeepCWrapper PRIVATE "${NDKDIR}/include")
+set_property(TARGET DeepCWrapper PROPERTY
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+add_library(DeepCMWrapper OBJECT src/DeepCMWrapper.cpp)
+target_include_directories(DeepCMWrapper PRIVATE "${NDKDIR}/include")
+target_sources(DeepCMWrapper PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+set_property(TARGET DeepCMWrapper PROPERTY
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+# ============================================================================
+# src/ plugins - no wrapper needed
+# ============================================================================
+set(PLUGINS
+    DeepCAddChannels
+    DeepCAdjustBBox
+    DeepCConstant
+    DeepCCopyBBox
+    DeepCRemoveChannels
+    DeepCShuffle
+    DeepCWorld
+)
+
+foreach(PLUGIN_NAME ${PLUGINS})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+endforeach()
+
+# ============================================================================
+# src/ plugins - need DeepCWrapper
+# ============================================================================
+set(PLUGINS_WRAPPED
+    DeepCAdd
+    DeepCClamp
+    DeepCColorLookup
+    DeepCGamma
+    DeepCGrade
+    DeepCHueShift
+    DeepCInvert
+    DeepCMatrix
+    DeepCMultiply
+    DeepCPosterize
+    DeepCSaturation
+)
+
+foreach(PLUGIN_NAME ${PLUGINS_WRAPPED})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+endforeach()
+
+# ============================================================================
+# src/ plugins - need DeepCWrapper + DeepCMWrapper
+# ============================================================================
+set(PLUGINS_MWRAPPED
+    DeepCID
+    DeepCPNoise
+)
+
+foreach(PLUGIN_NAME ${PLUGINS_MWRAPPED})
+    add_nuke_plugin(${PLUGIN_NAME} src/${PLUGIN_NAME}.cpp)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+    target_sources(${PLUGIN_NAME} PRIVATE $<TARGET_OBJECTS:DeepCMWrapper>)
+endforeach()
+
+# FastNoise into DeepCPNoise
+target_include_directories(DeepCPNoise PRIVATE FastNoise)
+target_sources(DeepCPNoise PRIVATE $<TARGET_OBJECTS:FastNoise>)
+
+# ============================================================================
+# DeepCBlink (needs RIPFramework)
+# ============================================================================
+if(RIPFRAMEWORK_LIBRARY)
+    add_nuke_plugin(DeepCBlink src/DeepCBlink.cpp)
+    target_link_libraries(DeepCBlink PRIVATE ${RIPFRAMEWORK_LIBRARY})
+    list(APPEND PLUGINS DeepCBlink)
+endif()
+
+# ============================================================================
+# DeepCPMatte (needs OpenGL + wrappers)
+# ============================================================================
+if(OpenGL_FOUND)
+    add_nuke_plugin(DeepCPMatte src/DeepCPMatte.cpp)
+    target_sources(DeepCPMatte PRIVATE $<TARGET_OBJECTS:DeepCWrapper>)
+    target_sources(DeepCPMatte PRIVATE $<TARGET_OBJECTS:DeepCMWrapper>)
+    target_link_libraries(DeepCPMatte PRIVATE opengl32)
+    list(APPEND PLUGINS_MWRAPPED DeepCPMatte)
+endif()
+
+# ============================================================================
+# DeepCBlur
+# ============================================================================
+add_nuke_plugin(DeepCBlur
+    DeepCBlur/src/DeepCBlur.cpp
+    DeepCBlur/src/BlurKernels.cpp
+    DeepCBlur/src/DeepCBlurSpec.cpp
+    shared/src/DeepCOpTree.cpp
+    shared/src/DeepCSpec.cpp
+)
+target_include_directories(DeepCBlur PRIVATE
+    DeepCBlur/include
+    shared/include
+)
+
+# ============================================================================
+# DeepCDefocus
+# ============================================================================
+add_nuke_plugin(DeepCDefocus
+    DeepCDefocus/src/DeepCDefocus.cpp
+    DeepCDefocus/src/DefocusKernels.cpp
+    DeepCDefocus/src/DeepCDefocusSpec.cpp
+    DeepCDefocus/src/CircleMetadataKernel.cpp
+    shared/src/DeepCSpec.cpp
+)
+target_include_directories(DeepCDefocus PRIVATE
+    DeepCDefocus/include
+    shared/include
+)
+
+# ============================================================================
+# Install all plugins
+# ============================================================================
+set(ALL_PLUGINS
+    ${PLUGINS}
+    ${PLUGINS_WRAPPED}
+    ${PLUGINS_MWRAPPED}
+    DeepCBlur
+    DeepCDefocus
+)
+
+foreach(PLUGIN_TARGET ${ALL_PLUGINS})
+    install(TARGETS ${PLUGIN_TARGET}
+        RUNTIME DESTINATION .
+        LIBRARY DESTINATION .
+    )
+endforeach()
+
+# Default install to ~/.nuke
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "$ENV{USERPROFILE}/.nuke"
+        CACHE PATH "Install path" FORCE)
+endif()
+
+# ============================================================================
+# Build Summary
+# ============================================================================
+message(STATUS "")
+message(STATUS "===========================================================================")
+message(STATUS "DeepC Windows Build Configuration:")
+message(STATUS "  Build Type:        ${CMAKE_BUILD_TYPE}")
+message(STATUS "  Compiler:          MSVC ${MSVC_VERSION}")
+message(STATUS "  C++ Standard:      C++${CMAKE_CXX_STANDARD}")
+message(STATUS "  Runtime Linking:   STATIC (/MT) - No VC++ Redistributable required!")
+message(STATUS "  ")
+message(STATUS "Nuke Configuration:")
+message(STATUS "  Nuke Version:      ${NUKE_VERSION}")
+message(STATUS "  Nuke Directory:    ${NDKDIR}")
+message(STATUS "  DDImage Library:   ${DDIMAGE_LIBRARY}")
+message(STATUS "  ")
+message(STATUS "Standard plugins:    ${PLUGINS}")
+message(STATUS "Wrapped plugins:     ${PLUGINS_WRAPPED}")
+message(STATUS "MWrapped plugins:    ${PLUGINS_MWRAPPED}")
+message(STATUS "DeepCBlur:           YES")
+message(STATUS "DeepCDefocus:        YES")
+message(STATUS "DeepCBlink:          ${RIPFRAMEWORK_LIBRARY}")
+message(STATUS "DeepCPMatte:         ${OpenGL_FOUND}")
+message(STATUS "  ")
+message(STATUS "Installation:")
+message(STATUS "  Install prefix:    ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "  ")
+message(STATUS "Build Commands:")
+message(STATUS "  Configure:  cmake -B build -G \"Visual Studio 17 2022\" -A x64")
+message(STATUS "  Build:      cmake --build build --config Release")
+message(STATUS "  Install:    cmake --install build --config Release")
+message(STATUS "  ")
+message(STATUS "Portability:")
+message(STATUS "  DLL Dependencies:  DDImage.dll, KERNEL32.dll, opengl32.dll ONLY")
+message(STATUS "  NOT Required:      Visual C++ Redistributable (statically linked!)")
+message(STATUS "===========================================================================")
+message(STATUS "")
